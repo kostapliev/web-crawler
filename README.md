@@ -1,7 +1,13 @@
 # Web Crawler
+# Хуымæтæг Веб-Краулер
+# Простой Веб-Краулер
 ####Simple web crawler built using Node.js
+####Хуымæтæг веб-краулер Node.js-ы фæрцы
+####Простой веб-крауел используя Node.js
 
 
+## Getting Started
+## Куыд хъæуы райдайын кусын
 ## Getting Started
 
 - Clone the repo or download the zip file, and `cd` into the project folder.
