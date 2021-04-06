@@ -1,26 +1,30 @@
 const fs = require('fs');
 const url = require('url');
-const argv = require('yargs').argv; // for taking arguments from command line
 
 
-const parseUrl = require('./parseUrl'); // parses the initial url passed by user
+
+
+const argumentss = require('yargs').argv; // исы аргументтæ терминалæй
+
+
+const UrlInputted = require('./parseUrl'); // райсы йæхимæ url, кæцы ныффысста архайæг
 const crawlSinglePage = require('./crawlSinglePage'); // crawls a single url and returns its data
-const fetchBannedUrls = require('./robots'); // checks robots.txt for pages banned for crawlers
+const getBannedUrls = require('./robots'); // басгары robots.txt сыфтæн, кæдон краулингæн нæ бæззынц
 
 
 const urlPool = {}; // contains all the urls. Format - "url": crawledOrNot - {'abc.com': false}
 let crawledUrls = []; // contains all the crawled urls
 let output = []; // contains output of all pages
-let bannedUrls = []; // contains all the paths banned by robots.txt
+let UrlBann = []; // ам ис иннæ urlтæ кæдонимæ нæй гæнæн архайын, уый тыххæй æмæ æрцыдысты фыст ам: robots.txt
 
 
 // Batch data
 // urls are processed in a batch defined by batchSizeLimit
 // only if a batch is processed, new batch will begin
-let batchSizeLimit; // size of a batch - can be set via command line
 let batchSize = 0; // number of urls in current batch
 let currentBatch = {}; // urls in current batch. Same format as urlPool
 let batchInProgress = false; // flag to see if a batch is being processed
+let batchLim; // бæтчы бæрц, терминалы йæ фыссæм
 
 
 // a batch gets only five tries before next one begins
@@ -28,12 +32,11 @@ let batchInProgress = false; // flag to see if a batch is being processed
 let numberOfTries = 0;
 
 
-// checks if a url is allowed to be crawled
-// or if it is banned bt robots.txt
-function isUrlAllowed(hyperlink) {
+//Ацы функци басгары url, ома, ис гæнæн, цæмæй ныккраулер æй кæнæм æви нæ; кæннод, зæгъгæ, robot.txtы у бан.
+function UrlWorking(hyperlink) {
   const urlPath = url.parse(hyperlink).pathname;
-  for(let i = 0; i < bannedUrls.length; i++) {
-    if(urlPath.startsWith(bannedUrls[i])){
+  for(let i = 0; i < UrlBann.length; i++) {
+    if(urlPath.startsWith(UrlBann[i])){
       return false;
     }
   }
@@ -41,11 +44,14 @@ function isUrlAllowed(hyperlink) {
 }
 
 
-// ** heart of the crawler **
-// - sends individual urls for crawling through crawlSinglePage function
-// - updates the output array with new data
-// - maintains status of urlPool
-function processUrlPool(urlPool) {
+// ############# Краулеры зæрдæ ам ис ###############
+/* 1) Арвиты индивидуалон urlтæ краулингæн crawlSinglePage функцийæн
+ * 2) Ног кæны массивы фæстиуæг ног бæрæггæнæнтæй
+ * 3) Вæрд цæуынц urlPool -ы статус
+ * 
+ * 
+ * */
+function procUrls(urlPool) {
 
   // before sending new batch for crawling
   // make sure current batch is processed
@@ -58,7 +64,7 @@ function processUrlPool(urlPool) {
     return;
   } else {
     numberOfTries = 0;
-    clearUnreachableUrls(currentBatch);
+    clearUnableUrls(currentBatch);
     batchInProgress = false;
     batchSize = 0;
     currentBatch = {};
@@ -75,7 +81,7 @@ function processUrlPool(urlPool) {
 
     // if a url has not been processed and batch has some space
     // add the uri to the batch and send it for crawling
-    if(!urlPool[uri] && batchSize < batchSizeLimit) {
+    if(!urlPool[uri] && batchSize < batchLim) {
 
       currentBatch[uri] = false;
       batchSize++;
@@ -93,7 +99,7 @@ function processUrlPool(urlPool) {
           // updating urlPool with newly discoverd links
           const newHyperlinks = singlePageData.internalHyperlinks;
           for(let i = 0, len = newHyperlinks.length; i < len; i++) {
-            if(!(newHyperlinks[i] in urlPool) && isUrlAllowed(newHyperlinks[i])) {
+            if(!(newHyperlinks[i] in urlPool) && UrlWorking(newHyperlinks[i])) {
               if(!(newHyperlinks[i].slice(0, - 1) in urlPool)) { // to take care of trailing slashes
                 urlPool[newHyperlinks[i]] = false;
               }
@@ -115,10 +121,8 @@ function processUrlPool(urlPool) {
 
   }
 }
-
-// called in case of batch has been tried enough times
-// urls in that batch are marked true
-function clearUnreachableUrls(currentBatch) {
+//скусы кæд бæтч цалдæр хатт кусынмæ бахъавыд urlтæ бæтчы цæуынц фыст куыд true
+function clearUnableUrls(currentBatch) {
   for(page in currentBatch) {
     if(!urlPool[page.uri]) {
       urlPool[page.uri] = true;
@@ -126,58 +130,53 @@ function clearUnreachableUrls(currentBatch) {
   }
 };
 
-
-// this gets called every 5 seconds to check the status of the crawl
-// if all the urls in the pool have been crawled, it returns the output
-// if not it calls the processUrlPool function
-function checkCrawlingStatus() {
+// ацы функци алы фондз уысмы басгары краулингы куыст æмæ кæд алкæцы urlимæ бакуыста, уæд раздахы фæстиуæг, кæд нæ, уæд фæдзуры функци procUrls -мæ
+function CrawlerCheck() {
 
   const urlPoolStatus = Object.keys(urlPool).map(u => urlPool[u]); // url pool status contains true or false depending on if a url has been processed
   const allUrlsProcessed = urlPoolStatus.indexOf(false) === -1 ? true : false; // even if there is one false, crawling is still in progress
   if(!allUrlsProcessed) {
-    processUrlPool(urlPool);
-    setTimeout(checkCrawlingStatus, 5000);
+    procUrls(urlPool);
+    setTimeout(CrawlerCheck, 5000);
   } else {
     fs.writeFile('output.json', JSON.stringify(output, null, 2), (err) => {
       if (err) throw err;
-      console.log('Output saved! Check your local directory for output.json');
+      console.log('Результат сохранен! Надо открыть файл output.json');
       process.exit();
     });
   }
 
-  // updating the status on the console
-  const urlsCrawled = output.length;
-  console.log("Total pages found\t", Object.keys(urlPool).length);
-  console.log("Total pages crawled\t", urlsCrawled);
-  console.log('=============================');
+  // ног кæны консолы статус
+  const CrawleddUrls = output.length;
+  console.log("Найдено страниц\t", Object.keys(urlPool).length);
+  console.log("Обработано страниц\t", CrawleddUrls);
+  console.log('##############################################');
 
 }
 
 
-// does initial setup
-// and starts the crawling process
-function init() {
+// ам арæзт æрцæуынц рæвдзгæнæнтæ æмæ райдауы краулингы куыст
+function raidau() {
 
-  // sets up first url to crawl
-  const startingPath = parseUrl(argv.domain);
-  urlPool[startingPath] = false;
+  // фыццаг url краулингæн
+  const startPath = UrlInputted(argumentss.domain);
+  urlPool[startPath] = false;
 
-  // parses batch size from command line
-  batchSizeLimit = argv.batch || 5;
+  // терминалæй исы бæтчы бæрц æви æвæры хинымæц
+  batchLim = argumentss.batch || 7;
 
-  // reads robots.txt
-  // and stores banned urls in bannedUrls array
-  fetchBannedUrls(startingPath)
+  // кæсы robots.txt æмæ æвæры дзы бангонд urlтæ массивы: UrlBann
+  getBannedUrls(startPath)
     .then(data => {
-      bannedUrls = data;
+      UrlBann = data;
     })
     .catch(() => {
-      bannedUrls = []
+      UrlBann = []
     })
 
-  // starts the crawling process
-  setTimeout(checkCrawlingStatus, 5000);
+  // Райдауы краулинг
+  setTimeout(CrawlerCheck, 5000);
 
 }
 
-init();
+raidau();
