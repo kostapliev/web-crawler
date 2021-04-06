@@ -1,15 +1,21 @@
-// fetches robots.txt file - if one exists
-// stores it locally in the project directory
-// parses it using 'robots-txt-parse' moodule
-// and returns an array of banned paths
+/*
+ * рахæссы robot.txt файл, кæд дзы ис, уæд
+ * бафснайы йæ бынаты локалон папкæйы 
+ * ныппарс æй кæны модуль 'robot-txt-parse'-ы фæрцы
+ * æмæ стæй раздахы массив бангонд "фæндæгтæй"
+ * 
+ * 
+ * 
+ * 
+ * */
 
 const url = require('url');
 const fs = require('fs');
 
 const rp = require('request-promise');
-const parse = require('robots-txt-parse'); // module to scan robots.txt file
+const parse = require('robots-txt-parse'); // модуль кæцы бакæсы robots.txt файл
 
-function fetchBannedUrls(startingUrl) {
+function getBannedUrls(startingUrl) {
 
   const urlObject = url.parse(startingUrl);
   const robotsTxtFilePath = url.format({
@@ -61,4 +67,4 @@ function fetchBannedUrls(startingUrl) {
 
 }
 
-module.exports = fetchBannedUrls;
+module.exports = getBannedUrls;
